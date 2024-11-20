@@ -173,4 +173,34 @@ export class OrdersService {
 
     return orders;
   }
+
+  async fetchTotalOrdersCancelledByMonth({
+    month,
+    year,
+  }: {
+    month: string;
+    year: string;
+  }){
+
+    const startDate = getMonthBoundary({
+      type: 'first',
+      date: new Date(`${year}/${month}`),
+    });
+    const endDate = getMonthBoundary({
+      type: 'last',
+      date: new Date(`${year}/${month}`),
+    });
+
+    const ordersCancelled = await this.prisma.orders.findMany({
+      where : {
+        is_cancelled : true,
+        order_date : {
+          gte : startDate,
+          lte : endDate
+        }
+      }
+    })
+
+    return ordersCancelled
+  }
 }

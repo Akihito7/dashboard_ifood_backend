@@ -44,7 +44,20 @@ export class OrdersController {
   @Get('by-month')
   async getTotalOdersByMonth(@Req() req) {
     const { month, year } = req.query;
-    if(month.length != 2  || year.length != 4) throw new BadRequestException("Please provider a valid month and year! format Month XX, year XXXX")
+    if (!month || month.length != 2 || !year || year.length != 4)
+      throw new BadRequestException(
+        'Please provider a valid month and year! format Month XX, year XXXX',
+      );
     return this.ordersService.fetchTotalOrdersByMonth({ month, year });
+  }
+
+  @Get('cancelled-by-month')
+  async getOrdersCancelledByMonth(@Req() req) {
+    const {month, year} = req.query;
+    if (!month || month.length != 2 || !year || year.length != 4)
+      throw new BadRequestException(
+        'Please provider a valid month and year! format Month XX, year XXXX',
+      );
+    return this.ordersService.fetchTotalOrdersCancelledByMonth({ month, year });
   }
 }
