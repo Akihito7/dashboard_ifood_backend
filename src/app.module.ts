@@ -6,6 +6,7 @@ import { EmployeesModule } from './app/employees/employees.module';
 import { OrdersModule } from './app/orders/orders.module';
 import { PrismaModule } from './app/prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
+import { ItemsModule } from './app/items/items.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { ConfigModule } from '@nestjs/config';
     EmployeesModule,
     OrdersModule,
     PrismaModule,
+    ItemsModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),

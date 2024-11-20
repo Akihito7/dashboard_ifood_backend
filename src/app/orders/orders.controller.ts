@@ -32,4 +32,5 @@ export class OrdersController {
     if(!isISO8601(startDate) || !isISO8601(endDate)) throw new BadRequestException("Please provide a date with format ISO8601");
     return this.ordersService.fetchRevenueByPeriod(req.query)
   }
+  
 }
