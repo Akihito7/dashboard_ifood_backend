@@ -40,4 +40,11 @@ export class AuthenticationService {
     })
   }
 
+  async checkToken(token : string){
+    try {
+      return this.jwt.verify(token);
+    } catch (error) {
+      throw new UnauthorizedException("Invalid token!")
+    }
+  }
 }

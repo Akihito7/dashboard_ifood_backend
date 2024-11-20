@@ -14,6 +14,8 @@ export class EmployeesService {
     password,
     roles,
   }: RegisterEmployeeDto) {
+
+     
     await this.prisma.employees.create({
       data: {
         name,
