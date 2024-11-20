@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { getMonthBoundary } from 'src/utils/get-month-boundary';
 
 @Injectable()
 export class OrdersService {
@@ -50,15 +51,10 @@ export class OrdersService {
   }
 
   async fetchMetricsRevenueByMonth() {
-    const startDateCurrentMonth = new Date();
-    startDateCurrentMonth.setDate(1);
-    startDateCurrentMonth.setHours(0, 0, 0, 0);
+
+    const startDateCurrentMonth = getMonthBoundary({ type : "first", date : new Date()})
+    const endDateCurrentMonth = getMonthBoundary({ type : "last", date : new Date()})
   
-    const endDateCurrentMonth = new Date(startDateCurrentMonth);
-    endDateCurrentMonth.setMonth(startDateCurrentMonth.getMonth() + 1);
-    endDateCurrentMonth.setDate(0);
-    endDateCurrentMonth.setHours(0, 59, 59, 999);
- 
     const currentMonthRevenue = await this.prisma.orders.aggregate({
       _sum: {
         total_price: true,
@@ -70,20 +66,15 @@ export class OrdersService {
         },
       },
     });
-  
+
     const currentMonthTotalRevenue = currentMonthRevenue._sum.total_price || 0;
+    
+    const previousMonth = new Date(startDateCurrentMonth);
+    previousMonth.setMonth(startDateCurrentMonth.getMonth() - 1);
 
-    const startDatePreviousMonth = new Date(startDateCurrentMonth);
-    startDatePreviousMonth.setMonth(startDateCurrentMonth.getMonth() - 1);
-    startDatePreviousMonth.setDate(1);
-    startDatePreviousMonth.setHours(0, 0, 0, 0);
-
+    const startDatePreviousMonth = getMonthBoundary({type : "first", date : previousMonth})
   
-    const endDatePreviousMonth = new Date(startDatePreviousMonth);
-    endDatePreviousMonth.setMonth(startDatePreviousMonth.getMonth() + 1);
-    endDatePreviousMonth.setDate(0);
-    endDatePreviousMonth.setHours(0, 59, 59, 999);
-
+    const endDatePreviousMonth = getMonthBoundary({ type : "last", date : startDatePreviousMonth})
   
     const previousMonthRevenue = await this.prisma.orders.aggregate({
       _sum: {
