@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { getMonthBoundary } from 'src/utils/get-month-boundary';
+import { FetchRevenueByPeriodDto } from './dtos/fetch-revenue-by-period-dto';
 
 @Injectable()
 export class OrdersService {
@@ -102,4 +103,26 @@ export class OrdersService {
     };
   }
 
+  async fetchRevenueByPeriod({ startDate, endDate }: FetchRevenueByPeriodDto) {
+    return this.prisma.orders.groupBy({
+      by: ['order_date'], 
+      _sum: {
+        total_price: true, 
+      },
+      _count: {
+        _all: true, 
+      },
+      where: {
+        order_date: {
+          gte: startDate,
+          lte: endDate, 
+        },
+      },
+      orderBy: {
+        order_date: 'asc', 
+      },
+    });
+  }
 }
+
+

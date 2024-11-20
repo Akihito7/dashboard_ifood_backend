@@ -1,5 +1,6 @@
 import { BadRequestException, Controller, Get, Req } from "@nestjs/common";
 import { OrdersService } from "./orders.service";
+import { isISO8601 } from "src/utils/isISO8601";
 
 @Controller("api/orders")
 export class OrdersController {
@@ -23,5 +24,12 @@ export class OrdersController {
   @Get("metrics-revenue-by-month")
   async getTotalRevenueByMonth(){
     return this.ordersService.fetchMetricsRevenueByMonth();
+  }
+
+  @Get('revenue-by-period')
+  async getTotalRevenueByPeriod(@Req() req){
+    const { startDate , endDate } = req.query;
+    if(!isISO8601(startDate) || !isISO8601(endDate)) throw new BadRequestException("Please provide a date with format ISO8601");
+    return this.ordersService.fetchRevenueByPeriod(req.query)
   }
 }
