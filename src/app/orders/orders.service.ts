@@ -52,10 +52,15 @@ export class OrdersService {
   }
 
   async fetchMetricsRevenueByMonth() {
+    const startDateCurrentMonth = getMonthBoundary({
+      type: 'first',
+      date: new Date(),
+    });
+    const endDateCurrentMonth = getMonthBoundary({
+      type: 'last',
+      date: new Date(),
+    });
 
-    const startDateCurrentMonth = getMonthBoundary({ type : "first", date : new Date()})
-    const endDateCurrentMonth = getMonthBoundary({ type : "last", date : new Date()})
-  
     const currentMonthRevenue = await this.prisma.orders.aggregate({
       _sum: {
         total_price: true,
@@ -69,14 +74,20 @@ export class OrdersService {
     });
 
     const currentMonthTotalRevenue = currentMonthRevenue._sum.total_price || 0;
-    
+
     const previousMonth = new Date(startDateCurrentMonth);
     previousMonth.setMonth(startDateCurrentMonth.getMonth() - 1);
 
-    const startDatePreviousMonth = getMonthBoundary({type : "first", date : previousMonth})
-  
-    const endDatePreviousMonth = getMonthBoundary({ type : "last", date : startDatePreviousMonth})
-  
+    const startDatePreviousMonth = getMonthBoundary({
+      type: 'first',
+      date: previousMonth,
+    });
+
+    const endDatePreviousMonth = getMonthBoundary({
+      type: 'last',
+      date: startDatePreviousMonth,
+    });
+
     const previousMonthRevenue = await this.prisma.orders.aggregate({
       _sum: {
         total_price: true,
@@ -88,14 +99,22 @@ export class OrdersService {
         },
       },
     });
-  
-    const previousMonthTotalRevenue = previousMonthRevenue._sum.total_price || 0;
+
+    const previousMonthTotalRevenue =
+      previousMonthRevenue._sum.total_price || 0;
 
     let percentageChange = 0;
     if (Number(previousMonthTotalRevenue) > 0) {
-      percentageChange = Number((((Number(currentMonthTotalRevenue) - Number(previousMonthTotalRevenue)) / Number(previousMonthTotalRevenue)) * 100).toFixed(2));
+      percentageChange = Number(
+        (
+          ((Number(currentMonthTotalRevenue) -
+            Number(previousMonthTotalRevenue)) /
+            Number(previousMonthTotalRevenue)) *
+          100
+        ).toFixed(2),
+      );
     }
-  
+
     return {
       currentMonthTotalRevenue,
       /* previousMonthTotalRevenue, */
@@ -105,24 +124,53 @@ export class OrdersService {
 
   async fetchRevenueByPeriod({ startDate, endDate }: FetchRevenueByPeriodDto) {
     return this.prisma.orders.groupBy({
-      by: ['order_date'], 
+      by: ['order_date'],
       _sum: {
-        total_price: true, 
+        total_price: true,
       },
       _count: {
-        _all: true, 
+        _all: true,
       },
       where: {
         order_date: {
           gte: startDate,
-          lte: endDate, 
+          lte: endDate,
         },
       },
       orderBy: {
-        order_date: 'asc', 
+        order_date: 'asc',
       },
     });
   }
+
+  async fetchTotalOrdersByMonth({
+    month,
+    year,
+  }: {
+    month: string;
+    year: string;
+  }) {
+    const startDate = getMonthBoundary({
+      type: 'first',
+      date: new Date(`${year}/${month}`),
+    });
+    const endDate = getMonthBoundary({
+      type: 'last',
+      date: new Date(`${year}/${month}`),
+    });
+
+    const orders = await this.prisma.orders.findMany({
+      where: {
+        order_date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      orderBy: {
+        order_date: 'desc',
+      },
+    });
+
+    return orders;
+  }
 }
-
-
