@@ -1,13 +1,12 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { JwtService } from '@nestjs/jwt';
+import { LoginDTO } from './dtos/login-dto';
+import { AuthenticationService } from './authentication.service';
 @Controller("api/auth")
 export class AuthenticationController {
 
-  constructor(private readonly jwt : JwtService) {}
-
+  constructor(private readonly authenticationService : AuthenticationService) {}
   @Post("login")
-  async login(@Body() body : any){
-    return "Hello"
+  async login(@Body() body : LoginDTO){
+    return this.authenticationService.login(body);
   }
 }
