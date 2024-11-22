@@ -9,7 +9,6 @@ export class OrdersController {
   @Get('total-by-day')
   async getTotalCountOrdersByDay(@Req() req) {
     const { date } = req.query;
-    console.log(date);
     if (!date || !isISO8601(date))
       throw new BadRequestException(
         'Please provide a day in the request query in ISO format (YYYY-MM-DD). Example: 2024-11-19',

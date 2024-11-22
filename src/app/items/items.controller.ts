@@ -6,7 +6,7 @@ export class ItemsController {
 
   constructor(private readonly itemsService : ItemsService) {}
 
-  @Get("best-seller")
+  @Get("best-sellers")
   async getItemsBestSeller(){
     return this.itemsService.fetchItemsBestSeller()
   }
