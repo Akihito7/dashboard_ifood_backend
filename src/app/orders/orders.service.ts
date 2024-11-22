@@ -7,48 +7,97 @@ import { FetchRevenueByPeriodDto } from './dtos/fetch-revenue-by-period-dto';
 export class OrdersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async fetchCountOrdersByDay(day: string) {
-    const startDateFormatted = new Date(day + ' 00:00:00');
-    const endDateFormatted = new Date(day + ' 23:59:59');
+  async fetchTotalCountOrdersByDay(date: string) {
+    const startDateCurrentDay = new Date(date);
+    startDateCurrentDay.setUTCHours(0, 0, 0, 0);
 
-    return this.prisma.orders.count({
+    const endDateCurrentDay = new Date(date);
+    endDateCurrentDay.setUTCHours(23, 59, 59, 999);
+
+    const startDatePreviousDay = new Date(date);
+    startDatePreviousDay.setDate(startDatePreviousDay.getDate() - 1);
+    startDatePreviousDay.setUTCHours(0, 0, 0, 0);
+
+    const endDatePreviousDay = new Date(date);
+    endDatePreviousDay.setDate(endDatePreviousDay.getDate() - 1);
+    endDatePreviousDay.setUTCHours(23, 59, 59, 999);
+
+    const totalOrdersCurrentDay = await this.prisma.orders.count({
       where: {
         order_date: {
-          gte: startDateFormatted,
-          lte: endDateFormatted,
+          gte: startDateCurrentDay,
+          lte: endDateCurrentDay,
         },
       },
     });
+
+    const totalOrdersPreviousDay = await this.prisma.orders.count({
+      where: {
+        order_date: {
+          gte: startDatePreviousDay,
+          lte: endDatePreviousDay,
+        },
+      },
+    });
+
+    const percentageChange = (
+      ((Number(totalOrdersCurrentDay) - Number(totalOrdersPreviousDay)) /
+        Number(totalOrdersPreviousDay)) *
+      100
+    ).toFixed(2);
+    return {
+      totalOrders: totalOrdersCurrentDay,
+      percentageChange,
+    };
   }
 
-  async fetchCountOrdersByMonth(date: string) {
-    const inputDate = new Date(date);
-    const startDateFormatted = new Date(
-      inputDate.getFullYear(),
-      inputDate.getMonth(),
-      1,
-      0,
-      0,
-      0,
-      0,
-    );
-    const endDateFormatted = new Date(
-      inputDate.getFullYear(),
-      inputDate.getMonth() + 1,
-      0,
-      0,
-      59,
-      59,
-      999,
-    );
-    return this.prisma.orders.count({
+  async fetchTotalCountOrdersByMonth(date: string) {
+    const startDateCurrentMonth = getMonthBoundary({
+      type: 'first',
+      date: date,
+    });
+    const endDateCurrentMonth = getMonthBoundary({ type: 'last', date: date });
+
+    const datePreviousMonth = new Date(date);
+    datePreviousMonth.setMonth(datePreviousMonth.getMonth() - 1);
+
+    const startDatePreviousMonth = getMonthBoundary({
+      type: 'first',
+      date: datePreviousMonth,
+    });
+    const endDatePreviousMonth = getMonthBoundary({
+      type: 'last',
+      date: datePreviousMonth,
+    });
+
+    const currentOrders = await this.prisma.orders.count({
       where: {
         order_date: {
-          gte: startDateFormatted,
-          lte: endDateFormatted,
+          gte: startDateCurrentMonth,
+          lte: endDateCurrentMonth,
         },
       },
     });
+
+    const previousOrders = await this.prisma.orders.count({
+      where: {
+        order_date: {
+          gte: startDatePreviousMonth,
+          lte: endDatePreviousMonth,
+        },
+      },
+    });
+
+    const percentageChange = (
+      ((Number(currentOrders) - Number(previousOrders)) /
+        Number(previousOrders)) *
+      100
+    ).toFixed(2);
+
+    return {
+      totalOrders: currentOrders,
+      percentageChange,
+    };
   }
 
   async fetchMetricsRevenueByMonth() {
@@ -143,23 +192,18 @@ export class OrdersService {
     });
   }
 
-  async fetchTotalOrdersByMonth({
-    month,
-    year,
-  }: {
-    month: string;
-    year: string;
-  }) {
+  async fetchTotalOrdersByMonth(date: string) {
     const startDate = getMonthBoundary({
       type: 'first',
-      date: new Date(`${year}/${month}`),
-    });
-    const endDate = getMonthBoundary({
-      type: 'last',
-      date: new Date(`${year}/${month}`),
+      date,
     });
 
-    const orders = await this.prisma.orders.findMany({
+    const endDate = getMonthBoundary({
+      type: 'last',
+      date,
+    });
+
+    const currentMonthOrders = await this.prisma.orders.findMany({
       where: {
         order_date: {
           gte: startDate,
@@ -171,36 +215,93 @@ export class OrdersService {
       },
     });
 
-    return orders;
+    const previousDate = new Date(startDate);
+    previousDate.setMonth(previousDate.getMonth() - 1);
+
+    const previousStartDate = getMonthBoundary({
+      type: 'first',
+      date: previousDate,
+    });
+
+    const previousEndDate = getMonthBoundary({
+      type: 'last',
+      date: previousDate,
+    });
+
+    const previousMonthOrders = await this.prisma.orders.findMany({
+      where: {
+        order_date: {
+          gte: previousStartDate,
+          lte: previousEndDate,
+        },
+      },
+      orderBy: {
+        order_date: 'desc',
+      },
+    });
+
+    const percentageChange =
+      ((currentMonthOrders.length - previousMonthOrders.length) /
+        previousMonthOrders.length) *
+      100;
+
+    return {
+      orders: currentMonthOrders,
+      percentageChange,
+    };
   }
 
-  async fetchTotalOrdersCancelledByMonth({
-    month,
-    year,
-  }: {
-    month: string;
-    year: string;
-  }){
-
-    const startDate = getMonthBoundary({
+  async fetchTotalOrdersCancelledByMonth(date: string) {
+    const startDateCurrentMonth = getMonthBoundary({
       type: 'first',
-      date: new Date(`${year}/${month}`),
+      date,
     });
-    const endDate = getMonthBoundary({
+    const endDateCurrentMonth = getMonthBoundary({
       type: 'last',
-      date: new Date(`${year}/${month}`),
+      date,
     });
 
-    const ordersCancelled = await this.prisma.orders.findMany({
-      where : {
-        is_cancelled : true,
-        order_date : {
-          gte : startDate,
-          lte : endDate
-        }
-      }
-    })
+    const datePreviousMonth = new Date(date);
+    datePreviousMonth.setMonth(datePreviousMonth.getMonth() - 1);
 
-    return ordersCancelled
+    const startDatePreviousMonth = getMonthBoundary({
+      type: 'first',
+      date: datePreviousMonth,
+    });
+
+    const endDatePreviousMonth = getMonthBoundary({
+      type: 'last',
+      date: datePreviousMonth,
+    });
+
+    const ordersCancelledCurrentMonth = await this.prisma.orders.count({
+      where: {
+        is_cancelled: true,
+        order_date: {
+          gte: startDateCurrentMonth,
+          lte: endDateCurrentMonth,
+        },
+      },
+    });
+
+    const ordersCancelledPreviousMonth = await this.prisma.orders.count({
+      where: {
+        is_cancelled: true,
+        order_date: {
+          gte: startDatePreviousMonth,
+          lte: endDatePreviousMonth,
+        },
+      },
+    });
+
+    const percentageChange =
+    ((Number(ordersCancelledCurrentMonth) - Number(ordersCancelledPreviousMonth)) /
+      Number(ordersCancelledPreviousMonth ?? 1)) *
+    100;
+
+    return {
+      totalOrdersCancelled: ordersCancelledCurrentMonth,
+      percentageChange : percentageChange === Infinity  ? 100 : percentageChange
+    };
   }
 }
