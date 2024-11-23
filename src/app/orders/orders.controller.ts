@@ -1,8 +1,10 @@
-import { BadRequestException, Controller, Get, Req } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Req, UseGuards } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { isISO8601 } from 'src/utils/isISO8601';
+import { EnsureAuthenticationGuard } from 'src/guards/ensure-authentication.guard';
 
 @Controller('api/orders')
+@UseGuards(EnsureAuthenticationGuard)
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
