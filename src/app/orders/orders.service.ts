@@ -227,27 +227,38 @@ export class OrdersService {
     const endDate = new Date(date);
     endDate.setUTCHours(23, 59, 59, 999);
 
-    const currentDayOrders = await this.prisma.orders.findMany({
-      where: {
-        order_date: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
-      orderBy: {
-        order_date: 'desc',
-      },
-    });
-
-    const formattedOrders = currentDayOrders.map((order) => {
-      return {
-        ...order,
-        order_date: formatTimeAgo(order.order_date.toISOString()),
-      };
-    });
+    const currentDayOrders = await this.prisma.$queryRawUnsafe(
+      `
+      SELECT 
+          o.id, 
+          o.order_date, 
+          o.total_price, 
+          o.status_id, 
+          o.created_at, 
+          o.updated_at, 
+          o.username,
+          os.name_ptbr AS status,
+          CASE 
+              WHEN EXTRACT(DAY FROM NOW() - o.order_date) > 0 THEN 
+                  EXTRACT(DAY FROM NOW() - o.order_date)::TEXT || ' dias atrás'
+              WHEN EXTRACT(HOUR FROM NOW() - o.order_date) > 0 THEN 
+                  EXTRACT(HOUR FROM NOW() - o.order_date)::TEXT || ' horas atrás'
+              WHEN EXTRACT(MINUTE FROM NOW() - o.order_date) > 0 THEN 
+                  EXTRACT(MINUTE FROM NOW() - o.order_date)::TEXT || ' minutos atrás'
+              ELSE 
+                  EXTRACT(SECOND FROM NOW() - o.order_date)::TEXT || ' segundos atrás'
+          END AS time_elapsed
+      FROM orders o
+      INNER JOIN order_status os ON os.id = o.status_id
+      WHERE o.order_date >= $1
+        AND o.order_date <= $2
+  `,
+      startDate,
+      endDate,
+    );
 
     return {
-       orders : formattedOrders,
+      orders: currentDayOrders,
     };
   }
 

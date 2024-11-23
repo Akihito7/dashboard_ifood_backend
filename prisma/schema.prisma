@@ -41,11 +41,22 @@ model items_order {
 model orders {
   id           Int           @id @default(autoincrement())
   order_date   DateTime?     @default(now()) @db.Timestamptz(6)
-  status       String        @db.VarChar(50)
   total_price  Decimal       @db.Decimal(10, 2)
   created_at   DateTime?     @default(now()) @db.Timestamptz(6)
   updated_at   DateTime?     @db.Timestamp(6)
   username     String        @db.VarChar(40)
   is_cancelled Boolean?
+  status_id    Int
   items_order  items_order[]
+  order_status order_status  @relation(fields: [status_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_order_status")
+}
+
+model order_status {
+  id          Int       @id @default(autoincrement())
+  name        String    @db.VarChar(50)
+  description String?
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  updated_at  DateTime? @default(now()) @db.Timestamp(6)
+  name_ptbr   String?   @db.VarChar(255)
+  orders      orders[]
 }
