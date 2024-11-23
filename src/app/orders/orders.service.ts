@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { getMonthBoundary } from 'src/utils/get-month-boundary';
 import { FetchRevenueByPeriodDto } from './dtos/fetch-revenue-by-period-dto';
+import { formatTimeAgo } from 'src/utils/format-time-ago';
 
 @Injectable()
 export class OrdersService {
@@ -214,19 +215,18 @@ export class OrdersService {
         order_date: 'desc',
       },
     });
-    
+
     return {
       orders: currentMonthOrders,
     };
   }
 
   async fetchOrdersByDay(date: string) {
-
     const startDate = new Date(date);
-    startDate.setUTCHours(0,0,0,0)
-    const endDate = new Date(date)
-    endDate.setUTCHours(23, 59, 59, 999)
-  
+    startDate.setUTCHours(0, 0, 0, 0);
+    const endDate = new Date(date);
+    endDate.setUTCHours(23, 59, 59, 999);
+
     const currentDayOrders = await this.prisma.orders.findMany({
       where: {
         order_date: {
@@ -239,8 +239,15 @@ export class OrdersService {
       },
     });
 
+    const formattedOrders = currentDayOrders.map((order) => {
+      return {
+        ...order,
+        order_date: formatTimeAgo(order.order_date.toISOString()),
+      };
+    });
+
     return {
-      orders: currentDayOrders,
+       orders : formattedOrders,
     };
   }
 
