@@ -100,14 +100,14 @@ export class OrdersService {
     };
   }
 
-  async fetchMetricsRevenueByMonth() {
+  async fetchMetricsRevenueByMonth(date: string) {
     const startDateCurrentMonth = getMonthBoundary({
       type: 'first',
-      date: new Date(),
+      date: new Date(date),
     });
     const endDateCurrentMonth = getMonthBoundary({
       type: 'last',
-      date: new Date(),
+      date: new Date(date),
     });
 
     const currentMonthRevenue = await this.prisma.orders.aggregate({
@@ -192,7 +192,7 @@ export class OrdersService {
     });
   }
 
-  async fetchTotalOrdersByMonth(date: string) {
+  async fetchOrdersByMonth(date: string) {
     const startDate = getMonthBoundary({
       type: 'first',
       date,
@@ -214,25 +214,24 @@ export class OrdersService {
         order_date: 'desc',
       },
     });
+    
+    return {
+      orders: currentMonthOrders,
+    };
+  }
 
-    const previousDate = new Date(startDate);
-    previousDate.setMonth(previousDate.getMonth() - 1);
+  async fetchOrdersByDay(date: string) {
 
-    const previousStartDate = getMonthBoundary({
-      type: 'first',
-      date: previousDate,
-    });
-
-    const previousEndDate = getMonthBoundary({
-      type: 'last',
-      date: previousDate,
-    });
-
-    const previousMonthOrders = await this.prisma.orders.findMany({
+    const startDate = new Date(date);
+    startDate.setUTCHours(0,0,0,0)
+    const endDate = new Date(date)
+    endDate.setUTCHours(23, 59, 59, 999)
+  
+    const currentDayOrders = await this.prisma.orders.findMany({
       where: {
         order_date: {
-          gte: previousStartDate,
-          lte: previousEndDate,
+          gte: startDate,
+          lte: endDate,
         },
       },
       orderBy: {
@@ -240,14 +239,8 @@ export class OrdersService {
       },
     });
 
-    const percentageChange =
-      ((currentMonthOrders.length - previousMonthOrders.length) /
-        previousMonthOrders.length) *
-      100;
-
     return {
-      orders: currentMonthOrders,
-      percentageChange,
+      orders: currentDayOrders,
     };
   }
 
@@ -295,13 +288,14 @@ export class OrdersService {
     });
 
     const percentageChange =
-    ((Number(ordersCancelledCurrentMonth) - Number(ordersCancelledPreviousMonth)) /
-      Number(ordersCancelledPreviousMonth ?? 1)) *
-    100;
+      ((Number(ordersCancelledCurrentMonth) -
+        Number(ordersCancelledPreviousMonth)) /
+        Number(ordersCancelledPreviousMonth ?? 1)) *
+      100;
 
     return {
       totalOrdersCancelled: ordersCancelledCurrentMonth,
-      percentageChange : percentageChange === Infinity  ? 100 : percentageChange
+      percentageChange: percentageChange === Infinity ? 100 : percentageChange,
     };
   }
 }

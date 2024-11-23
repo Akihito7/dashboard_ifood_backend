@@ -27,8 +27,13 @@ export class OrdersController {
   }
 
   @Get('metrics-revenue-by-month')
-  async getTotalRevenueByMonth() {
-    return this.ordersService.fetchMetricsRevenueByMonth();
+  async getTotalRevenueByMonth(@Req() req) {
+    const {date} = req.query;
+    if (!date || !isISO8601(date))
+      throw new BadRequestException(
+        'Please provide a day in the request query in ISO format (YYYY-MM-DD). Example: 2024-11-19',
+      );
+    return this.ordersService.fetchMetricsRevenueByMonth(date);
   }
 
   @Get('total-revenue-by-period')
@@ -42,13 +47,23 @@ export class OrdersController {
   }
 
   @Get('by-month')
-  async getTotalOdersByMonth(@Req() req) {
+  async getOdersByMonth(@Req() req) {
     const { date } = req.query;
     if (!date || !isISO8601(date))
       throw new BadRequestException(
         'Please provide a day in the request query in ISO format (YYYY-MM-DD). Example: 2024-11-19',
       );
-    return this.ordersService.fetchTotalOrdersByMonth(date);
+    return this.ordersService.fetchOrdersByMonth(date);
+  }
+
+  @Get('by-day')
+  async getOrdersByDay(@Req() req){
+    const { date } = req.query;
+    if (!date || !isISO8601(date))
+      throw new BadRequestException(
+        'Please provide a day in the request query in ISO format (YYYY-MM-DD). Example: 2024-11-19',
+      );
+      return this.ordersService.fetchOrdersByDay(date);
   }
 
   @Get('total-cancelled-by-month')
