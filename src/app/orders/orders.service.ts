@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { getMonthBoundary } from 'src/utils/get-month-boundary';
 import { FetchRevenueByPeriodDto } from './dtos/fetch-revenue-by-period-dto';
-import { formatTimeAgo } from 'src/utils/format-time-ago';
 
 @Injectable()
 export class OrdersService {
@@ -252,6 +251,7 @@ export class OrdersService {
       INNER JOIN order_status os ON os.id = o.status_id
       WHERE o.order_date >= $1
         AND o.order_date <= $2
+      ORDER BY o.order_date DESC
   `,
       startDate,
       endDate,
@@ -315,5 +315,45 @@ export class OrdersService {
       totalOrdersCancelled: ordersCancelledCurrentMonth,
       percentageChange: percentageChange === Infinity ? 100 : percentageChange,
     };
+  }
+
+  async changeOrderStatus({ orderId, nextIdOrderStatus }: any) {
+    await this.prisma.orders.update({
+      data: {
+        status_id: nextIdOrderStatus,
+      },
+      where: {
+        id: Number(orderId),
+      },
+    });
+  }
+
+  async getDetailsOrderById(orderId: number) {
+   return await this.prisma.$queryRawUnsafe(
+      `
+      SELECT 
+o.id,
+o.total_price,
+o.username,
+o.status_id,
+o.order_date,
+os.name_ptbr as status,
+ json_agg(
+        json_build_object(
+            'id_item', io.id_item,
+            'quantity', io.quantity,
+            'name', i.name,
+            'price', i.price,
+            'description', i.description
+        )
+    ) AS items
+FROM orders o
+INNER JOIN items_order io ON io.id_order = o.id
+INNER JOIN items i ON i.id = io.id_item
+INNER JOIN order_status os ON os.id = o.status_id
+WHERE o.id = $1
+GROUP BY o.id, os.name_ptbr`,
+      orderId
+    );
   }
 }

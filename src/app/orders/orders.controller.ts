@@ -1,7 +1,16 @@
-import { BadRequestException, Controller, Get, Req, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Patch,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { isISO8601 } from 'src/utils/isISO8601';
 import { EnsureAuthenticationGuard } from 'src/guards/ensure-authentication.guard';
+import { ChangeOrderStatusDto } from './dtos/change-order-status-dto';
 
 @Controller('api/orders')
 @UseGuards(EnsureAuthenticationGuard)
@@ -30,7 +39,7 @@ export class OrdersController {
 
   @Get('metrics-revenue-by-month')
   async getTotalRevenueByMonth(@Req() req) {
-    const {date} = req.query;
+    const { date } = req.query;
     if (!date || !isISO8601(date))
       throw new BadRequestException(
         'Please provide a day in the request query in ISO format (YYYY-MM-DD). Example: 2024-11-19',
@@ -59,13 +68,13 @@ export class OrdersController {
   }
 
   @Get('by-day')
-  async getOrdersByDay(@Req() req){
+  async getOrdersByDay(@Req() req) {
     const { date } = req.query;
     if (!date || !isISO8601(date))
       throw new BadRequestException(
         'Please provide a day in the request query in ISO format (YYYY-MM-DD). Example: 2024-11-19',
       );
-      return this.ordersService.fetchOrdersByDay(date);
+    return this.ordersService.fetchOrdersByDay(date);
   }
 
   @Get('total-cancelled-by-month')
@@ -76,5 +85,20 @@ export class OrdersController {
         'Please provide a day in the request query in ISO format (YYYY-MM-DD). Example: 2024-11-19',
       );
     return this.ordersService.fetchTotalOrdersCancelledByMonth(date);
+  }
+
+  @Patch('status/:orderId')
+  async changeOrderStatus(@Req() req, @Body() body: ChangeOrderStatusDto) {
+    const { orderId } = req.params;
+    const { nextIdOrderStatus } = body;
+    if (!orderId) throw new BadRequestException('Please provide any orderId');
+    return this.ordersService.changeOrderStatus({ orderId, nextIdOrderStatus });
+  }
+
+  @Get('details/:orderId')
+  async getDetailsOrderById(@Req() req) {
+    const { orderId } = req.params;
+    if (!orderId) throw new BadRequestException('Please provider any order id');
+    return this.ordersService.getDetailsOrderById(Number(orderId));
   }
 }
