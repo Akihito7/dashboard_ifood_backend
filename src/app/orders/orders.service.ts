@@ -22,33 +22,51 @@ export class OrdersService {
     endDatePreviousDay.setDate(endDatePreviousDay.getDate() - 1);
     endDatePreviousDay.setUTCHours(23, 59, 59, 999);
 
-    const totalOrdersCurrentDay = await this.prisma.orders.count({
-      where: {
-        order_date: {
-          gte: startDateCurrentDay,
-          lte: endDateCurrentDay,
-        },
-      },
-    });
+    const response = await this.prisma.$queryRawUnsafe(
+      `
+      WITH 
+total_orders_current_month AS (
+    SELECT CAST(COUNT(*) AS INT) AS total_current
+    FROM orders o
+    WHERE o.order_date >= $1
+    AND o.order_date <=  $2
+),
+total_orders_previous_month AS (
+    SELECT CAST(COUNT(*) AS INT) AS total_previous
+    FROM orders o
+    WHERE o.order_date >= $3
+    AND o.order_date <= $4
+)
 
-    const totalOrdersPreviousDay = await this.prisma.orders.count({
-      where: {
-        order_date: {
-          gte: startDatePreviousDay,
-          lte: endDatePreviousDay,
-        },
-      },
-    });
+SELECT 
+    COALESCE(total_current, 0) AS total_orders_current,
+    CASE 
+        WHEN total_previous = 0 THEN 1
+        ELSE total_previous
+    END AS total_orders_previous,
+     CAST(
+        ((total_current - 
+            CASE 
+                WHEN total_previous = 0 THEN 1
+                ELSE total_previous
+            END
+        ) * 100.0) /
+        CASE 
+            WHEN total_previous = 0 THEN 1
+            ELSE total_previous
+        END AS DECIMAL(10, 2)
+    ) AS percentage_change
+FROM 
+    total_orders_current_month,
+    total_orders_previous_month;
+`,
+      startDateCurrentDay,
+      endDateCurrentDay,
+      startDatePreviousDay,
+      endDatePreviousDay,
+    );
 
-    const percentageChange = (
-      ((Number(totalOrdersCurrentDay) - Number(totalOrdersPreviousDay)) /
-        Number(totalOrdersPreviousDay)) *
-      100
-    ).toFixed(2);
-    return {
-      totalOrders: totalOrdersCurrentDay,
-      percentageChange,
-    };
+    return response[0];
   }
 
   async fetchTotalCountOrdersByMonth(date: string) {
@@ -70,34 +88,48 @@ export class OrdersService {
       date: datePreviousMonth,
     });
 
-    const currentOrders = await this.prisma.orders.count({
-      where: {
-        order_date: {
-          gte: startDateCurrentMonth,
-          lte: endDateCurrentMonth,
-        },
-      },
-    });
+    const response = await this.prisma.$queryRawUnsafe(
+      `
+      WITH 
+total_orders_current_month AS (
+    SELECT CAST(COUNT(*) AS INT) AS total_current
+    FROM orders o
+    WHERE o.order_date >= $1
+    AND o.order_date <=  $2
+),
+total_orders_previous_month AS (
+    SELECT CAST(COUNT(*) AS INT) AS total_previous
+    FROM orders o
+    WHERE o.order_date >= $3
+    AND o.order_date <= $4
+)
 
-    const previousOrders = await this.prisma.orders.count({
-      where: {
-        order_date: {
-          gte: startDatePreviousMonth,
-          lte: endDatePreviousMonth,
-        },
-      },
-    });
+SELECT 
+    COALESCE(total_current, 0) AS total_orders_current,
+    COALESCE(total_previous, 0) AS total_orders_previous,
+  CAST(
+        ((total_current - 
+            CASE 
+                WHEN total_previous = 0 THEN 1
+                ELSE total_previous
+            END
+        ) * 100.0) /
+        CASE 
+            WHEN total_previous = 0 THEN 1
+            ELSE total_previous
+        END AS DECIMAL(10, 2)
+    ) AS percentage_change
+FROM 
+    total_orders_current_month,
+    total_orders_previous_month;
+`,
+      startDateCurrentMonth,
+      endDateCurrentMonth,
+      startDatePreviousMonth,
+      endDatePreviousMonth,
+    );
 
-    const percentageChange = (
-      ((Number(currentOrders) - Number(previousOrders)) /
-        Number(previousOrders)) *
-      100
-    ).toFixed(2);
-
-    return {
-      totalOrders: currentOrders,
-      percentageChange,
-    };
+    return response[0]
   }
 
   async fetchMetricsRevenueByMonth(date: string) {
@@ -285,36 +317,52 @@ export class OrdersService {
       date: datePreviousMonth,
     });
 
-    const ordersCancelledCurrentMonth = await this.prisma.orders.count({
-      where: {
-        is_cancelled: true,
-        order_date: {
-          gte: startDateCurrentMonth,
-          lte: endDateCurrentMonth,
-        },
-      },
-    });
+    const response = await this.prisma.$queryRawUnsafe(
+      `
+  WITH 
+total_orders_previous_month AS (
+    SELECT 
+        CAST(COUNT(*) AS INT) AS total_previous
+    FROM orders o
+    WHERE o.order_date >= '2024-06-21'
+      AND o.order_date <= '2024-06-25'
+      AND o.status_id = 5
+),
 
-    const ordersCancelledPreviousMonth = await this.prisma.orders.count({
-      where: {
-        is_cancelled: true,
-        order_date: {
-          gte: startDatePreviousMonth,
-          lte: endDatePreviousMonth,
-        },
-      },
-    });
+total_orders_current_month AS (
+    SELECT 
+        CAST(COUNT(*) AS INT) AS total_current
+    FROM orders o
+    WHERE o.order_date >= '2024-07-21'
+      AND o.order_date <= '2024-07-25'
+      AND o.status_id = 5
+)
 
-    const percentageChange =
-      ((Number(ordersCancelledCurrentMonth) -
-        Number(ordersCancelledPreviousMonth)) /
-        Number(ordersCancelledPreviousMonth ?? 1)) *
-      100;
+SELECT 
+    COALESCE(total_current, 0) AS total_orders_cancelled,
+    CAST(
+        ((total_current - 
+            CASE 
+                WHEN total_previous = 0 THEN 1
+                ELSE total_previous
+            END
+        ) * 100.0) /
+        CASE 
+            WHEN total_previous = 0 THEN 1
+            ELSE total_previous
+        END AS DECIMAL(10, 2)
+    ) AS percentage_change
+FROM 
+    total_orders_previous_month, 
+    total_orders_current_month;
+      `,
+      startDateCurrentMonth,
+      endDateCurrentMonth,
+      startDatePreviousMonth,
+      endDatePreviousMonth,
+    );
 
-    return {
-      totalOrdersCancelled: ordersCancelledCurrentMonth,
-      percentageChange: percentageChange === Infinity ? 100 : percentageChange,
-    };
+    return response[0];
   }
 
   async changeOrderStatus({ orderId, nextIdOrderStatus }: any) {
@@ -329,7 +377,7 @@ export class OrdersService {
   }
 
   async getDetailsOrderById(orderId: number) {
-   return await this.prisma.$queryRawUnsafe(
+    return await this.prisma.$queryRawUnsafe(
       `
       SELECT 
 o.id,
@@ -353,7 +401,7 @@ INNER JOIN items i ON i.id = io.id_item
 INNER JOIN order_status os ON os.id = o.status_id
 WHERE o.id = $1
 GROUP BY o.id, os.name_ptbr`,
-      orderId
+      orderId,
     );
   }
 }
