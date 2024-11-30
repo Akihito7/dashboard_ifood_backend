@@ -324,8 +324,8 @@ total_orders_previous_month AS (
     SELECT 
         CAST(COUNT(*) AS INT) AS total_previous
     FROM orders o
-    WHERE o.order_date >= '2024-06-21'
-      AND o.order_date <= '2024-06-25'
+    WHERE o.order_date >= $3
+      AND o.order_date <= $4
       AND o.status_id = 5
 ),
 
@@ -333,8 +333,8 @@ total_orders_current_month AS (
     SELECT 
         CAST(COUNT(*) AS INT) AS total_current
     FROM orders o
-    WHERE o.order_date >= '2024-07-21'
-      AND o.order_date <= '2024-07-25'
+    WHERE o.order_date >= $1
+      AND o.order_date <= $2
       AND o.status_id = 5
 )
 
